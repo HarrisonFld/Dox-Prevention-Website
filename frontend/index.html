@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>FastAPI File Uploader</title>
+</head>
+<body>
+
+    <input type="file" id="fileInput">
+    <button id="uploadBtn">Upload</button>
+    <pre id="result"></pre>
+
+    <script>
+        document.getElementById('uploadBtn').addEventListener('click', async () => {
+            const fileInput = document.getElementById('fileInput');
+            const resultPre = document.getElementById('result');
+
+            if (fileInput.files.length === 0) {
+                alert('Please select a file first.');
+                return;
+            }
+
+            const file = fileInput.files[0];
+            const formData = new FormData();
+            formData.append('file', file);
+
+            resultPre.textContent = 'Uploading...';
+
+            try {
+                const response = await fetch('http://localhost:9000/parse-file', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Server returned status ${response.status}`);
+                }
+
+                const data = await response.json();
+                resultPre.textContent = JSON.stringify(data, null, 2);
+            } catch (error) {
+                resultPre.textContent = `Error: ${error.message}`;
+            }
+        });
+    </script>
+
+</body>
+</html>
