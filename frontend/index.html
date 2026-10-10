@@ -2,29 +2,144 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>FastAPI File Uploader</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Dox Prevention</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        /* Small layout safety tweaks to prevent button & checkbox overflow */
+        .removal-controls {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            align-items: flex-start;
+        }
+        .checkbox-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            width: 100%;
+        }
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            width: 100%;
+            margin-top: 5px;
+        }
+    </style>
 </head>
 <body>
 
-    <input type="file" id="fileInput">
-    <button id="uploadBtn">Upload</button>
-    <pre id="result"></pre>
+    <main>
+        <h1>Dox Prevention</h1>
+
+        <div class="file-controls">
+            <input type="file" id="file-input" hidden>
+            <button type="button" id="upload-btn">Upload File</button>
+            <button type="button" id="remove-file-btn">Remove File</button>
+        </div>
+
+        <div class="info-section" id="active-file">
+            <label>Active File: None</label>
+        </div>
+
+        <!-- Removal options container with separate lines for checkboxes and buttons -->
+        <div class="removal-controls" id="removal-controls">
+            <div class="checkbox-container" id="checkbox-container">
+                <!-- Dynamic checkboxes inserted here -->
+            </div>
+            <div class="action-buttons">
+                <button type="button" id="remove-selected-btn">Remove Selected Confidential Information</button>
+                <button type="button" id="remove-all-btn">Remove All Confidential Information</button>
+            </div>
+        </div>
+
+        <!-- Dynamic sections container -->
+        <div id="sections-container"></div>
+
+    </main>
 
     <script>
-        document.getElementById('uploadBtn').addEventListener('click', async () => {
-            const fileInput = document.getElementById('fileInput');
-            const resultPre = document.getElementById('result');
+        const fileInput = document.getElementById('file-input');
+        const uploadBtn = document.getElementById('upload-btn');
+        const removeFileBtn = document.getElementById('remove-file-btn');
+        const removeSelectedBtn = document.getElementById('remove-selected-btn');
+        const removeAllBtn = document.getElementById('remove-all-btn');
+        const activeFileLabel = document.getElementById('active-file');
+        const checkboxContainer = document.getElementById('checkbox-container');
+        const sectionsContainer = document.getElementById('sections-container');
 
-            if (fileInput.files.length === 0) {
-                alert('Please select a file first.');
-                return;
+        // Function to dynamically render sections and checkboxes from JSON
+        function renderSections(sectionsData) {
+            // Clear out any existing dynamic content
+            checkboxContainer.innerHTML = '';
+            sectionsContainer.innerHTML = '';
+
+            for (const [sectionName, kvPairs] of Object.entries(sectionsData)) {
+                // 1. Create checkbox control ONLY if it is not "File Information"
+                if (sectionName !== "File Information") {
+                    const label = document.createElement('label');
+                    label.className = 'checkbox checkbox-item';
+
+                    const checkbox = document.createElement('input');
+                    checkbox.type = 'checkbox';
+                    checkbox.name = 'remove-section';
+                    checkbox.value = sectionName;
+                    checkbox.checked = true;
+
+                    label.appendChild(checkbox);
+                    label.appendChild(document.createTextNode(' ' + sectionName));
+                    checkboxContainer.appendChild(label);
+                }
+
+                // 2. Create section element and table (renders for all sections including File Information)
+                const sectionEl = document.createElement('section');
+                sectionEl.className = 'info-section';
+                sectionEl.id = sectionName.toLowerCase().replace(/\s+/g, '-');
+
+                const h2 = document.createElement('h2');
+                h2.textContent = sectionName;
+                sectionEl.appendChild(h2);
+
+                const table = document.createElement('table');
+                const tbody = document.createElement('tbody');
+
+                for (const [key, val] of Object.entries(kvPairs)) {
+                    const tr = document.createElement('tr');
+
+                    const th = document.createElement('th');
+                    th.textContent = key;
+
+                    const td = document.createElement('td');
+                    td.textContent = val !== undefined && val !== null ? val : '';
+                    td.setAttribute('data-field', key);
+
+                    tr.appendChild(th);
+                    tr.appendChild(td);
+                    tbody.appendChild(tr);
+                }
+
+                table.appendChild(tbody);
+                sectionEl.appendChild(table);
+                sectionsContainer.appendChild(sectionEl);
             }
+        }
+
+        // 1. Click "Upload File" -> opens hidden file selector
+        uploadBtn.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        // 2. When a file is chosen, send to /parse-file and auto-generate sections
+        fileInput.addEventListener('change', async () => {
+            if (fileInput.files.length === 0) return;
 
             const file = fileInput.files[0];
             const formData = new FormData();
             formData.append('file', file);
+            activeFileLabel.innerHTML = `<label>Active File: ${file.name}</label>`;
 
-            resultPre.textContent = 'Uploading...';
+            uploadBtn.textContent = 'Parsing...';
 
             try {
                 const response = await fetch('http://localhost:9000/parse-file', {
@@ -37,10 +152,82 @@
                 }
 
                 const data = await response.json();
-                resultPre.textContent = JSON.stringify(data, null, 2);
+
+                if (data.sections) {
+                    renderSections(data.sections);
+                }
+
+                uploadBtn.textContent = 'Upload File';
             } catch (error) {
-                resultPre.textContent = `Error: ${error.message}`;
+                alert(`Error: ${error.message}`);
+                uploadBtn.textContent = 'Upload File';
             }
+        });
+
+        // 3. Remove File button clears input, active file indicator, and generated sections
+        removeFileBtn.addEventListener('click', () => {
+            fileInput.value = '';
+            activeFileLabel.innerHTML = '<label>Active File: None</label>';
+            checkboxContainer.innerHTML = '';
+            sectionsContainer.innerHTML = '';
+        });
+
+        // Helper function for processing modification requests
+        async function submitModification(sectionsValue, buttonElement, originalText) {
+            if (fileInput.files.length === 0) {
+                alert('Please select a file first.');
+                return;
+            }
+
+            const file = fileInput.files[0];
+            const formData = new FormData();
+            formData.append('file', file);
+
+            buttonElement.textContent = 'Processing...';
+
+            try {
+                const response = await fetch(`http://localhost:9000/modify_file/${encodeURIComponent(sectionsValue)}`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Server returned status ${response.status}`);
+                }
+
+                const blob = await response.blob();
+                const downloadUrl = window.URL.createObjectURL(blob);
+
+                const a = document.createElement('a');
+                a.href = downloadUrl;
+                a.download = file.name;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                window.URL.revokeObjectURL(downloadUrl);
+
+                buttonElement.textContent = originalText;
+            } catch (error) {
+                alert(`Error: ${error.message}`);
+                buttonElement.textContent = originalText;
+            }
+        }
+
+        // 4. Remove Selected button sends ONLY checked section names
+        removeSelectedBtn.addEventListener('click', async () => {
+            const checkboxes = document.querySelectorAll('input[name="remove-section"]:checked');
+            if (checkboxes.length === 0) {
+                alert('Please select at least one section to remove.');
+                return;
+            }
+
+            const sections = Array.from(checkboxes).map(cb => cb.value).join(',');
+            await submitModification(sections, removeSelectedBtn, 'Remove Selected Confidential Information');
+        });
+
+        // 5. Remove All button sends 'all'
+        removeAllBtn.addEventListener('click', async () => {
+            await submitModification('all', removeAllBtn, 'Remove All Confidential Information');
         });
     </script>
 
