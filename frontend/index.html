@@ -4,62 +4,533 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Dox Prevention</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400..900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        /* Small layout safety tweaks to prevent button & checkbox overflow */
-        .removal-controls {
+        :root {
+            --white: #ffffff;
+            --gold: #d4af37;
+            --ink: #0b0b0b;
+            --panel: rgba(0, 0, 0, 0.65);
+            --radius: 14px;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            min-height: 100vh;
+            background: #000;
+            color: var(--white);
+            font-family: "Inter", system-ui, sans-serif;
+            line-height: 1.5;
+            overflow-x: hidden;
+        }
+
+        /* ---------- Background video (color corrected) ---------- */
+        #bg-video {
+            position: fixed;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: -2;
+            filter: grayscale(0.8) sepia(0.6) hue-rotate(190deg) saturate(2.8) brightness(0.85);
+        }
+        .bg-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: -1;
+            background: radial-gradient(circle at center, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.7) 100%);
+        }
+
+        /* ---------- Classical Sun Motif (Top Right) ---------- */
+        .sun-motif {
+            position: fixed;
+            top: 25px;
+            right: 35px;
+            width: 90px;
+            height: 90px;
+            z-index: 1;
+            pointer-events: none;
+            filter: drop-shadow(0 0 18px rgba(255, 193, 7, 0.5));
+        }
+
+        /* ---------- Greek Ruins Motifs (Left & Right Sides) ---------- */
+        .ruins-left {
+            position: fixed;
+            bottom: 0;
+            left: 5px;
+            width: 140px;
+            height: 420px;
+            z-index: 1;
+            pointer-events: none;
+            opacity: 0.88;
+            transform: scaleX(-1);
+        }
+        .ruins-right {
+            position: fixed;
+            bottom: 0;
+            right: 5px;
+            width: 140px;
+            height: 420px;
+            z-index: 1;
+            pointer-events: none;
+            opacity: 0.88;
+        }
+
+        /* ---------- Layout ---------- */
+        main {
+            position: relative;
+            z-index: 2;
+            width: min(920px, 86%);
+            margin: 0 auto;
+            padding: 70px 0 100px;
             display: flex;
             flex-direction: column;
-            gap: 10px;
-            align-items: flex-start;
+            align-items: center;
+            gap: 28px;
+        }
+
+        header { text-align: center; }
+
+        /* Logo: Darker, high-contrast block for pillar separation */
+        h1 {
+            display: inline-block;
+            font-family: "Cinzel", serif;
+            font-weight: 900;
+            font-size: clamp(2.2rem, 6.5vw, 4.2rem);
+            letter-spacing: 6px;
+            text-transform: uppercase;
+            color: #f3f3f3;
+            background: linear-gradient(135deg, rgba(20, 20, 20, 0.95), rgba(45, 45, 45, 0.9));
+            padding: 12px 32px;
+            border: 2px solid rgba(255, 255, 255, 0.4);
+            border-radius: 8px;
+            transform: scaleY(1.5);
+            transform-origin: center;
+            margin: 34px 0 45px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8), inset 0 2px 6px rgba(255, 255, 255, 0.15);
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.9);
+        }
+        .tagline {
+            margin-top: 10px;
+            font-weight: 600;
+            letter-spacing: 1.5px;
+            color: var(--white);
+            text-shadow: 0 1px 12px rgba(0, 0, 0, 0.9);
+        }
+        .divider {
+            width: 110px;
+            height: 4px;
+            margin: 18px auto 0;
+            border-radius: 3px;
+            background: var(--white);
+        }
+
+        /* ---------- Cards ---------- */
+        .card, .info-section {
+            width: 100%;
+            background: var(--panel);
+            border: 2px solid var(--white);
+            border-radius: var(--radius);
+            padding: 24px;
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.45);
+        }
+
+        /* ---------- Drop zone: white rectangle ---------- */
+        .dropzone {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 16px;
+            padding: 36px 20px;
+            border: 3px solid var(--white);
+            border-radius: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            transition: background 0.3s, box-shadow 0.3s;
+            text-align: center;
+        }
+        .dropzone.dragover {
+            background: rgba(255, 255, 255, 0.25);
+            box-shadow: 0 0 26px rgba(255, 255, 255, 0.55);
+        }
+        .dropzone p { font-weight: 600; font-size: 0.98rem; }
+
+        .file-controls, .action-buttons {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 14px;
+            width: 100%;
+        }
+
+        #active-file {
+            margin-top: 18px;
+            text-align: center;
+            font-size: 0.95rem;
+            font-weight: 600;
+            padding: 10px 18px;
+            border-radius: 999px;
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            background: rgba(255, 255, 255, 0.08);
+            display: inline-block;
+        }
+        #active-file span { color: var(--gold); font-weight: 700; word-break: break-all; }
+
+        /* ---------- Buttons: white, soft glow ---------- */
+        button {
+            background: var(--white);
+            color: var(--ink);
+            border: 2px solid var(--white);
+            padding: 13px 26px;
+            border-radius: 6px;
+            font-family: "Cinzel", serif;
+            font-weight: 800;
+            letter-spacing: 1.5px;
+            font-size: 0.95rem;
+            cursor: pointer;
+            min-width: 200px;
+            transition: box-shadow 0.3s ease, background 0.3s ease, color 0.3s ease;
+        }
+        button:hover:not(:disabled),
+        button:focus-visible:not(:disabled) {
+            box-shadow: 0 0 16px rgba(255, 255, 255, 0.8), 0 0 4px rgba(255, 255, 255, 0.9);
+            outline: none;
+        }
+        button:active:not(:disabled) {
+            box-shadow: 0 0 24px rgba(255, 255, 255, 1);
+        }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        button.secondary {
+            background: transparent;
+            color: var(--white);
+        }
+        button.secondary:hover:not(:disabled),
+        button.secondary:focus-visible:not(:disabled) {
+            background: rgba(255, 255, 255, 0.12);
+        }
+
+        /* ---------- Removal controls ---------- */
+        .removal-controls {
+            display: none;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .removal-controls.visible { display: flex; }
+        .removal-controls h3 {
+            font-family: "Cinzel", serif;
+            font-weight: 800;
+            color: var(--white);
+            letter-spacing: 1px;
         }
         .checkbox-container {
             display: flex;
             flex-wrap: wrap;
-            gap: 15px;
+            gap: 10px;
             width: 100%;
         }
-        .action-buttons {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
+        .checkbox-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 14px;
+            font-weight: 600;
+            border: 2px solid var(--white);
+            border-radius: 999px;
+            background: rgba(0, 0, 0, 0.4);
+            cursor: pointer;
+            transition: box-shadow 0.25s;
+            user-select: none;
+        }
+        .checkbox-item:hover { box-shadow: 0 0 12px rgba(255, 255, 255, 0.6); }
+        .checkbox-item input { accent-color: #fff; width: 16px; height: 16px; }
+
+        /* ---------- Info tables ---------- */
+        #sections-container {
             width: 100%;
-            margin-top: 5px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .info-section h2 {
+            font-family: "Cinzel", serif;
+            font-weight: 800;
+            font-size: 1.25rem;
+            color: var(--white);
+            margin-bottom: 14px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid var(--white);
+        }
+        table { width: 100%; border-collapse: collapse; }
+        th, td {
+            padding: 9px 10px;
+            text-align: left;
+            vertical-align: top;
+            font-size: 0.92rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.18);
+        }
+        th { width: 35%; font-weight: 700; }
+        td { word-break: break-word; }
+        tr:last-child th, tr:last-child td { border-bottom: none; }
+
+        /* ---------- Popup ---------- */
+        .popup {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.85);
+            justify-content: center;
+            align-items: center;
+            z-index: 20;
+            padding: 16px;
+        }
+        .popup-content {
+            position: relative;
+            background: #000;
+            border: 3px solid var(--white);
+            padding: 28px 24px 24px;
+            border-radius: 10px;
+            max-width: 96vw;
+            text-align: center;
+            box-shadow: 0 0 60px rgba(255, 255, 255, 0.2);
+        }
+        .popup-content h2 {
+            font-family: "Cinzel", serif;
+            font-weight: 900;
+            font-size: clamp(1.6rem, 5vw, 2.6rem);
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            color: var(--white);
+        }
+        .popup-content p {
+            margin: 8px 0 18px;
+            font-weight: 500;
+            opacity: 0.9;
+        }
+        .popup-images {
+            display: flex;
+            gap: 14px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        .popup-images img {
+            width: 280px;
+            max-width: 100%;
+            border: 2px solid var(--white);
+            border-radius: 6px;
+            display: block;
+        }
+        #close {
+            position: absolute;
+            top: -16px;
+            right: -16px;
+            width: 36px;
+            height: 36px;
+            line-height: 34px;
+            text-align: center;
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--ink);
+            background: var(--white);
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        /* ---------- Greek Border & Footer Container ---------- */
+        .greek-footer-container {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 14px;
+            margin-top: 40px;
+            position: relative;
+        }
+        .greek-border {
+            width: 100%;
+            max-width: 550px;
+            height: 16px;
+            background-image: repeating-linear-gradient(
+                90deg,
+                var(--gold),
+                var(--gold) 10px,
+                transparent 10px,
+                transparent 20px
+            );
+            border-top: 2px solid var(--white);
+            border-bottom: 2px solid var(--white);
+            opacity: 0.85;
+            mask-image: linear-gradient(90deg, transparent, #000 15%, #000 85%, transparent);
+            -webkit-mask-image: linear-gradient(90deg, transparent, #000 15%, #000 85%, transparent);
+        }
+        footer {
+            font-size: 0.82rem;
+            font-weight: 500;
+            text-align: center;
+            letter-spacing: 0.5px;
+            text-shadow: 0 1px 8px #000;
+            color: rgba(255, 255, 255, 0.85);
+        }
+
+        @media (max-width: 600px) {
+            button { width: 100%; }
+            th { width: 40%; }
+            h1 { transform: scaleY(1.35); padding: 8px 16px; }
+            .sun-motif { display: none; }
+            .ruins-left, .ruins-right { display: none; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            * { transition: none !important; }
         }
     </style>
 </head>
 <body>
 
+    <!-- Background video -->
+    <video id="bg-video" autoplay muted loop playsinline preload="auto">
+        <source src="0000.mp4" type="video/mp4">
+    </video>
+    <div class="bg-overlay"></div>
+
+    <!-- Classical Sun Motif (Top Right) -->
+    <div id="sun-container" class="sun-motif" aria-hidden="true"></div>
+
+    <!-- Greek Ruins Motifs (Left & Right Sides) -->
+    <div id="ruins-left-container" class="ruins-left" aria-hidden="true"></div>
+    <div id="ruins-right-container" class="ruins-right" aria-hidden="true"></div>
+
+    <!-- Popup with original pictures -->
+    <div id="popup" class="popup">
+        <div class="popup-content">
+            <span id="close" role="button" aria-label="Close">&times;</span>
+            <h2>We destroy metadata.</h2>
+            <p>make personal data leaking a thing from the past.</p>
+            <div class="popup-images">
+                <img src="nakedtorso0037.png" alt="Original artwork 1">
+                <img src="nakedtorso0074.png" alt="Original artwork 2">
+            </div>
+        </div>
+    </div>
+
     <main>
-        <h1>Dox Prevention</h1>
+        <header>
+            <h1>Dox Prevention</h1>
+            <p class="tagline">Strip hidden personal data from your files before you share them.</p>
+            <div class="divider"></div>
+        </header>
 
-        <div class="file-controls">
-            <input type="file" id="file-input" hidden>
-            <button type="button" id="upload-btn">Upload File</button>
-            <button type="button" id="remove-file-btn">Remove File</button>
-        </div>
-
-        <div class="info-section" id="active-file">
-            <label>Active File: None</label>
-        </div>
-
-        <!-- Removal options container with separate lines for checkboxes and buttons -->
-        <div class="removal-controls" id="removal-controls">
-            <div class="checkbox-container" id="checkbox-container">
-                <!-- Dynamic checkboxes inserted here -->
+        <section class="card">
+            <div class="dropzone" id="dropzone">
+                <input type="file" id="file-input" hidden>
+                <p>Drag &amp; drop a file here, or choose one below</p>
+                <div class="file-controls">
+                    <button type="button" id="upload-btn">Upload File</button>
+                    <button type="button" id="remove-file-btn" class="secondary">Remove File</button>
+                </div>
             </div>
+            <div style="text-align:center">
+                <div id="active-file">Active File: <span>None</span></div>
+            </div>
+        </section>
+
+        <section class="card removal-controls" id="removal-controls">
+            <h3>Choose what to remove</h3>
+            <div class="checkbox-container" id="checkbox-container"></div>
             <div class="action-buttons">
-                <button type="button" id="remove-selected-btn">Remove Selected Confidential Information</button>
-                <button type="button" id="remove-all-btn">Remove All Confidential Information</button>
+                <button type="button" id="remove-selected-btn">Remove Selected</button>
+                <button type="button" id="remove-all-btn">Remove All</button>
             </div>
-        </div>
+        </section>
 
-        <!-- Dynamic sections container -->
         <div id="sections-container"></div>
 
+        <div class="greek-footer-container">
+            <div class="greek-border"></div>
+            <footer>Files are processed by your local server at localhost:9000.</footer>
+        </div>
     </main>
 
     <script>
+        /* ---------------- POPUP ---------------- */
+        const popup = document.getElementById('popup');
+        const closeBtn = document.getElementById('close');
+
+        popup.style.display = 'flex';
+
+        function closePopup() { popup.style.display = 'none'; }
+        closeBtn.onclick = closePopup;
+        popup.addEventListener('click', e => { if (e.target === popup) closePopup(); });
+        document.addEventListener('keydown', e => { if (e.key === 'Escape') closePopup(); });
+
+        /* ---------------- BACKGROUND VIDEO LOOP ---------------- */
+        const bgVideo = document.getElementById('bg-video');
+        bgVideo.play().catch(() => {
+            document.addEventListener('click', () => bgVideo.play(), { once: true });
+        });
+        bgVideo.addEventListener('ended', () => {
+            bgVideo.currentTime = 0;
+            bgVideo.play();
+        });
+
+        /* ---------------- SVG GENERATOR ENGINE (SUN & RUINS) ---------------- */
+        const NS = 'http://www.w3.org/2000/svg';
+
+        function el(name, attrs, parent) {
+            const e = document.createElementNS(NS, name);
+            for (const k in attrs) e.setAttribute(k, attrs[k]);
+            if (parent) parent.appendChild(e);
+            return e;
+        }
+
+        /* Build Sun */
+        function buildSun() {
+            const container = document.getElementById('sun-container');
+            if (!container) return;
+            const svg = el('svg', { width: '90', height: '90', viewBox: '0 0 90 90' });
+            const g = el('g', { transform: 'translate(45 45)' }, svg);
+
+            for (let i = 0; i < 12; i++) {
+                el('ellipse', { cx: 0, cy: -28, rx: 4, ry: 12, fill: '#ffb703', stroke: '#d4af37', 'stroke-width': '0.8', transform: `rotate(${i * 30})`, opacity: '0.9' }, g);
+            }
+            el('circle', { r: 16, fill: '#f4d03f', stroke: '#ffffff', 'stroke-width': '1.5' }, g);
+            container.appendChild(svg);
+        }
+
+        /* Build Greek Ruins */
+        function buildRuins(containerId) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+            const svg = el('svg', { width: '140', height: '420', viewBox: '0 0 140 420' });
+
+            // Base platform fragment
+            el('rect', { x: '10', y: '390', width: '120', height: '30', fill: '#e0e0e0', stroke: '#ffffff', 'stroke-width': '1.2' }, svg);
+
+            // Tall broken pillar left
+            el('rect', { x: '25', y: '30', width: '35', height: '360', fill: '#f5f5f5', stroke: '#cccccc', 'stroke-width': '1.2' }, svg);
+            for(let i = 1; i < 4; i++) {
+                el('line', { x1: 25 + i*9, y1: 30, x2: 25 + i*9, y2: 390, stroke: '#d0d0d0', 'stroke-width': '1' }, svg);
+            }
+            el('path', { d: 'M25 30 L32 20 L40 28 L50 18 L60 32 Z', fill: '#ffffff', stroke: '#cccccc', 'stroke-width': '1' }, svg);
+
+            // Shorter pillar right
+            el('rect', { x: '80', y: '120', width: '30', height: '270', fill: '#ebebeb', stroke: '#cccccc', 'stroke-width': '1.2' }, svg);
+            for(let i = 1; i < 3; i++) {
+                el('line', { x1: 80 + i*10, y1: 120, x2: 80 + i*10, y2: 390, stroke: '#c8c8c8', 'stroke-width': '1' }, svg);
+            }
+            el('path', { d: 'M80 120 L88 108 L98 116 L110 122 Z', fill: '#ffffff', stroke: '#cccccc', 'stroke-width': '1' }, svg);
+
+            container.appendChild(svg);
+        }
+
+        buildSun();
+        buildRuins('ruins-left-container');
+        buildRuins('ruins-right-container');
+
+        /* ---------------- MAIN FUNCTIONALITY ---------------- */
         const fileInput = document.getElementById('file-input');
         const uploadBtn = document.getElementById('upload-btn');
         const removeFileBtn = document.getElementById('remove-file-btn');
@@ -68,16 +539,28 @@
         const activeFileLabel = document.getElementById('active-file');
         const checkboxContainer = document.getElementById('checkbox-container');
         const sectionsContainer = document.getElementById('sections-container');
+        const removalControls = document.getElementById('removal-controls');
+        const dropzone = document.getElementById('dropzone');
 
-        // Function to dynamically render sections and checkboxes from JSON
-        function renderSections(sectionsData) {
-            // Clear out any existing dynamic content
+        function setActiveFile(name) {
+            activeFileLabel.textContent = 'Active File: ';
+            const span = document.createElement('span');
+            span.textContent = name;
+            activeFileLabel.appendChild(span);
+        }
+
+        function clearAll() {
             checkboxContainer.innerHTML = '';
             sectionsContainer.innerHTML = '';
+            removalControls.classList.remove('visible');
+        }
+
+        function renderSections(sectionsData) {
+            clearAll();
+            let hasCheckboxes = false;
 
             for (const [sectionName, kvPairs] of Object.entries(sectionsData)) {
-                // 1. Create checkbox control ONLY if it is not "File Information"
-                if (sectionName !== "File Information") {
+                if (sectionName !== 'File Information') {
                     const label = document.createElement('label');
                     label.className = 'checkbox checkbox-item';
 
@@ -88,11 +571,11 @@
                     checkbox.checked = true;
 
                     label.appendChild(checkbox);
-                    label.appendChild(document.createTextNode(' ' + sectionName));
+                    label.appendChild(document.createTextNode(sectionName));
                     checkboxContainer.appendChild(label);
+                    hasCheckboxes = true;
                 }
 
-                // 2. Create section element and table (renders for all sections including File Information)
                 const sectionEl = document.createElement('section');
                 sectionEl.className = 'info-section';
                 sectionEl.id = sectionName.toLowerCase().replace(/\s+/g, '-');
@@ -106,14 +589,11 @@
 
                 for (const [key, val] of Object.entries(kvPairs)) {
                     const tr = document.createElement('tr');
-
                     const th = document.createElement('th');
                     th.textContent = key;
-
                     const td = document.createElement('td');
                     td.textContent = val !== undefined && val !== null ? val : '';
                     td.setAttribute('data-field', key);
-
                     tr.appendChild(th);
                     tr.appendChild(td);
                     tbody.appendChild(tr);
@@ -123,56 +603,59 @@
                 sectionEl.appendChild(table);
                 sectionsContainer.appendChild(sectionEl);
             }
+
+            if (hasCheckboxes) removalControls.classList.add('visible');
         }
 
-        // 1. Click "Upload File" -> opens hidden file selector
-        uploadBtn.addEventListener('click', () => {
-            fileInput.click();
-        });
+        async function handleFile(file) {
+            if (!file) return;
+            setActiveFile(file.name);
+            uploadBtn.textContent = 'Parsing...';
+            uploadBtn.disabled = true;
 
-        // 2. When a file is chosen, send to /parse-file and auto-generate sections
-        fileInput.addEventListener('change', async () => {
-            if (fileInput.files.length === 0) return;
-
-            const file = fileInput.files[0];
             const formData = new FormData();
             formData.append('file', file);
-            activeFileLabel.innerHTML = `<label>Active File: ${file.name}</label>`;
-
-            uploadBtn.textContent = 'Parsing...';
 
             try {
                 const response = await fetch('http://localhost:9000/parse-file', {
                     method: 'POST',
                     body: formData
                 });
-
-                if (!response.ok) {
-                    throw new Error(`Server returned status ${response.status}`);
-                }
-
+                if (!response.ok) throw new Error(`Server returned status ${response.status}`);
                 const data = await response.json();
-
-                if (data.sections) {
-                    renderSections(data.sections);
-                }
-
-                uploadBtn.textContent = 'Upload File';
+                if (data.sections) renderSections(data.sections);
             } catch (error) {
                 alert(`Error: ${error.message}`);
+            } finally {
                 uploadBtn.textContent = 'Upload File';
+                uploadBtn.disabled = false;
+            }
+        }
+
+        uploadBtn.addEventListener('click', () => fileInput.click());
+
+        fileInput.addEventListener('change', () => {
+            if (fileInput.files.length) handleFile(fileInput.files[0]);
+        });
+
+        /* Drag & drop */
+        ['dragenter', 'dragover'].forEach(evt =>
+            dropzone.addEventListener(evt, e => { e.preventDefault(); dropzone.classList.add('dragover'); }));
+        ['dragleave', 'drop'].forEach(evt =>
+            dropzone.addEventListener(evt, e => { e.preventDefault(); dropzone.classList.remove('dragover'); }));
+        dropzone.addEventListener('drop', e => {
+            if (e.dataTransfer.files.length) {
+                fileInput.files = e.dataTransfer.files;
+                handleFile(e.dataTransfer.files[0]);
             }
         });
 
-        // 3. Remove File button clears input, active file indicator, and generated sections
         removeFileBtn.addEventListener('click', () => {
             fileInput.value = '';
-            activeFileLabel.innerHTML = '<label>Active File: None</label>';
-            checkboxContainer.innerHTML = '';
-            sectionsContainer.innerHTML = '';
+            setActiveFile('None');
+            clearAll();
         });
 
-        // Helper function for processing modification requests
         async function submitModification(sectionsValue, buttonElement, originalText) {
             if (fileInput.files.length === 0) {
                 alert('Please select a file first.');
@@ -184,20 +667,17 @@
             formData.append('file', file);
 
             buttonElement.textContent = 'Processing...';
+            buttonElement.disabled = true;
 
             try {
                 const response = await fetch(`http://localhost:9000/modify_file/${encodeURIComponent(sectionsValue)}`, {
                     method: 'POST',
                     body: formData
                 });
-
-                if (!response.ok) {
-                    throw new Error(`Server returned status ${response.status}`);
-                }
+                if (!response.ok) throw new Error(`Server returned status ${response.status}`);
 
                 const blob = await response.blob();
                 const downloadUrl = window.URL.createObjectURL(blob);
-
                 const a = document.createElement('a');
                 a.href = downloadUrl;
                 a.download = file.name;
@@ -205,29 +685,26 @@
                 a.click();
                 a.remove();
                 window.URL.revokeObjectURL(downloadUrl);
-
-                buttonElement.textContent = originalText;
             } catch (error) {
                 alert(`Error: ${error.message}`);
+            } finally {
                 buttonElement.textContent = originalText;
+                buttonElement.disabled = false;
             }
         }
 
-        // 4. Remove Selected button sends ONLY checked section names
-        removeSelectedBtn.addEventListener('click', async () => {
-            const checkboxes = document.querySelectorAll('input[name="remove-section"]:checked');
-            if (checkboxes.length === 0) {
+        removeSelectedBtn.addEventListener('click', () => {
+            const checked = document.querySelectorAll('input[name="remove-section"]:checked');
+            if (checked.length === 0) {
                 alert('Please select at least one section to remove.');
                 return;
             }
-
-            const sections = Array.from(checkboxes).map(cb => cb.value).join(',');
-            await submitModification(sections, removeSelectedBtn, 'Remove Selected Confidential Information');
+            const sections = Array.from(checked).map(cb => cb.value).join(',');
+            submitModification(sections, removeSelectedBtn, 'Remove Selected');
         });
 
-        // 5. Remove All button sends 'all'
-        removeAllBtn.addEventListener('click', async () => {
-            await submitModification('all', removeAllBtn, 'Remove All Confidential Information');
+        removeAllBtn.addEventListener('click', () => {
+            submitModification('all', removeAllBtn, 'Remove All');
         });
     </script>
 

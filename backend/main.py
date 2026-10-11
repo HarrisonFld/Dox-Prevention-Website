@@ -46,10 +46,16 @@ async def parse_file(file: UploadFile = File(...)):
             "filename": file.filename,
             "filetype": exif_data["FileType"],
             "size": len(contents)
-
-        },
-        "Metadata": parse_metadata(exif_data),
+        }
     }
+
+    metadata = parse_metadata(get_file_metadata(file_path))
+    if not metadata:
+        sections["Metadata"] = metadata
+
+    names = find_names(file_path)
+    if not names:
+        sections["Names"] = names
 
     print(sections)
 
@@ -78,6 +84,11 @@ def parse_metadata(exif_data) -> dict[str, Any]:
             notable_data[key] = exif_data[key]
 
     return notable_data
+
+def find_names(file_path: str) -> list[str]:
+    print(file_path)
+
+    return []
 
 
 @app.post("/modify_file/{sections}")
